@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPOS Piscok Lumer</title>
+
+  <!-- jsPDF untuk cetak struk PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(180deg, #fff8e1, #ffe082);
+      margin: 0;
+      padding: 0;
+    }
+    h1, h2, h3 {
+      color: #a86b00;
+      margin: 0;
+    }
+    .login-container, .kasir-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      text-align: center;
+      width: 300px;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    input, select {
+      display: block;
+      margin: 12px auto;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 100%;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: #ffa000;
+      outline: none;
+      box-shadow: 0 0 5px #ffc107;
+    }
+    button {
+      background: #ffc107;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: bold;
+      margin: 8px;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #ff9800;
+      transform: translateY(-2px);
+    }
+    h1 { text-align: center; margin-top: 20px; }
+    .produk-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      width: 90%;
+      margin: auto;
+    }
+    .produk {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      transition: 0.2s;
+    }
+    .produk:hover { transform: scale(1.05); }
+    table {
+      width: 90%;
+      border-collapse: collapse;
+      margin: 20px auto;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+    }
+    th { background: #ffecb3; }
+    .total {
+      text-align: right;
+      font-size: 18px;
+      font-weight: bold;
+      margin: 15px 60px;
+    }
+    .logout-btn {
+      background: #f44336;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+    }
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .modal-content.large { width: 600px; }
+    .flex-row { display:flex; gap:10px; justify-content:center; align-items:center; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .small { font-size: 13px; padding:6px 10px; }
+  </style>
+</head>
+<body>
+
+<!-- ====== LOGIN PAGE ====== -->
+<div class="login-container" id="loginPage">
+  <div class="login-box">
+    <h2>Login Kasir</h2>
+    <input type="text" id="username" placeholder="Nama Kasir" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Masuk</button>
+    <p id="loginError" style="color:red; display:none;">Nama atau password salah!</p>
+  </div>
+</div>
+
+<!-- ====== KASIR PAGE ====== -->
+<div class="kasir-container" id="kasirPage" style="display:none;">
+  <button class="logout-btn" onclick="logout()">Logout</button>
+  <h1>🍌 EPOS Piscok Lumer 🍫</h1>
+
+  <div class="action-buttons">
+    <button onclick="openTambahProduk()">Tambah Produk</button>
+    <button onclick="triggerImportCSV()">Import Produk (CSV)</button>
+    <button onclick="exportCSVProduk()">Export Produk (CSV)</button>
+    <button onclick="exportCSVPenjualan()">Export Penjualan (CSV)</button>
+    <button onclick="resetSemua()">Reset Semua Data</button>
+    <button onclick="openLaporan()">Tampilkan Laporan</button>
+    <button onclick="openPembayaran()">Bayar</button>
+    <input type="file" id="csvFile" accept=".csv" style="display:none" />
+  </div>
+
+  <div style="width:90%; margin:auto; text-align:right;">
+    <input id="cariProduk" placeholder="Cari produk..." style="width:260px; display:inline-block; margin-bottom:6px;" oninput="filterProduk()" />
+  </div>
+
+  <div class="produk-container" id="produkList"></div>
+
+  <table id="keranjangTable">
+    <thead>
+      <tr>
+        <th>Daftar Menu</th>
+        <th>Harga</th>
+        <th>Qty</th>
+        <th>Total</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="total" id="totalHarga">Total: Rp 0</div>
+</div>
+
+<!-- MODAL TAMBAH PRODUK -->
+<div class="modal" id="modalTambah">
+  <div class="modal-content">
+    <h3>Tambah Produk</h3>
+    <input type="text" id="namaProdukBaru" placeholder="Nama Produk" />
+    <input type="number" id="hargaProdukBaru" placeholder="Harga" />
+    <div class="flex-row">
+      <button onclick="simpanProduk()">Simpan</button>
+      <button style="background:#f44336" onclick="tutupModal('modalTambah')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LAPORAN -->
+<div class="modal" id="modalLaporan">
+  <div class="modal-content large">
+    <h3>Laporan Penjualan</h3>
+    <div id="isiLaporan" style="max-height:400px; overflow:auto; text-align:left;"></div>
+    <div style="text-align:center; margin-top:10px;">
+      <button onclick="tutupModal('modalLaporan')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PEMBAYARAN -->
+<div class="modal" id="modalBayar">
+  <div class="modal-content">
+    <h3>Pembayaran</h3>
+    <div id="summaryBayar" style="text-align:left; margin-bottom:8px;"></div>
+    <select id="metodeBayar">
+      <option value="Tunai">Tunai</option>
+      <option value="QRIS">QRIS</option>
+      <option value="Transfer">Transfer</option>
+    </select>
+    <input type="number" id="inputUang" placeholder="Masukkan jumlah uang bayar" />
+    <div style="text-align:left; margin-top:8px;">
+      <div id="infoKembalian">Kembalian: Rp 0</div>
+    </div>
+    <div class="flex-row">
+      <button onclick="prosesBayar()">Proses Bayar</button>
+      <button style="background:#f44336" onclick="tutupModal('modalBayar')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ====== LOGIN ======
+  const loginPage = document.getElementById("loginPage");
+  const kasirPage = document.getElementById("kasirPage");
+  let namaKasir = "";
+
+  function login() {
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value.trim();
+    if (user === "kasir" && pass === "1234") {
+      namaKasir = user;
+      loginPage.style.display = "none";
+      kasirPage.style.display = "block";
+      initData();
+      tampilkanProduk();
+      tampilkanKeranjang();
+    } else document.getElementById("loginError").style.display = "block";
+  }
+  function logout() {
+    kasirPage.style.display = "none";
+    loginPage.style.display = "flex";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("loginError").style.display = "none";
+  }
+
+  // ====== DATA ======
+  let produk = JSON.parse(localStorage.getItem("produk")) || [
+    { id: 1, nama: "Piscok Original", harga: 5000 },
+    { id: 2, nama: "Piscok Keju", harga: 7000 },
+    { id: 3, nama: "Piscok Lumer", harga: 8000 },
+    { id: 4, nama: "Piscok Cokelat Keju", harga: 8000 },
+    { id: 5, nama: "Piscok Matcha", harga: 8000 },
+  ];
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+  let penjualan = JSON.parse(localStorage.getItem("penjualan")) || [];
+
+  const produkList = document.getElementById("produkList");
+  const keranjangTable = document.querySelector("#keranjangTable tbody");
+  const totalHarga = document.getElementById("totalHarga");
+
+  function initData() {
+    localStorage.setItem("produk", JSON.stringify(produk));
+    localStorage.setItem("penjualan", JSON.stringify(penjualan));
+    localStorage.setItem("cart", JSON.stringify(cart));
+  }
+
+  // ====== PRODUK ======
+  function tampilkanProduk(list = produk) {
+    produkList.innerHTML = "";
+    list.forEach((p) => {
+      const div = document.createElement("div");
+      div.className = "produk";
+      div.innerHTML = `
+        <h3>${p.nama}</h3>
+        <p>Harga: Rp ${p.harga.toLocaleString("id-ID")}</p>
+        <button onclick="tambahKeranjang(${p.id})">Tambah</button>`;
+      produkList.appendChild(div);
+    });
+  }
+  function filterProduk() {
+    const q = document.getElementById("cariProduk").value.trim().toLowerCase();
+    tampilkanProduk(produk.filter(p => p.nama.toLowerCase().includes(q)));
+  }
+
+  // ====== KERANJANG ======
+  function tambahKeranjang(id) {
+    const item = produk.find(p => p.id === id);
+    const exist = cart.find(c => c.id === id);
+    if (exist) exist.qty++;
+    else cart.push({ ...item, qty: 1 });
+    localStorage.setItem("cart", JSON.stringify(cart));
+    tampilkanKeranjang();
+  }
+  function hapusItem(id) {
+    cart = cart.filter(c => c.id !== id);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    tampilkanKeranjang();
+  }
+  function tampilkanKeranjang() {
+    keranjangTable.innerHTML = "";
+    let total = 0;
+    cart.forEach(i => {
+      const sub = i.harga * i.qty;
+      total += sub;
+      keranjangTable.innerHTML += `
+        <tr>
+          <td>${i.nama}</td><td>Rp ${i.harga.toLocaleString("id-ID")}</td>
+          <td>${i.qty}</td><td>Rp ${sub.toLocaleString("id-ID")}</td>
+          <td><button class="small" style="background:#f44336" onclick="hapusItem(${i.id})">Hapus</button></td>
+        </tr>`;
+    });
+    totalHarga.textContent = "Total: Rp " + total.toLocaleString("id-ID");
+  }
+
+  // ====== MODAL TAMBAH PRODUK ======
+  function openTambahProduk(){document.getElementById("modalTambah").style.display="flex";}
+  function tutupModal(id){document.getElementById(id).style.display="none";}
+  function simpanProduk(){
+    const nama=document.getElementById("namaProdukBaru").value.trim();
+    const harga=parseInt(document.getElementById("hargaProdukBaru").value);
+    if(!nama||isNaN(harga)||harga<=0)return alert("Lengkapi semua field!");
+    const id=produk.length?Math.max(...produk.map(p=>p.id))+1:1;
+    produk.push({id,nama,harga});
+    localStorage.setItem("produk",JSON.stringify(produk));
+    tampilkanProduk();tutupModal("modalTambah");alert("Produk ditambah!");
+  }
+
+  // ====== PEMBAYARAN ======
+  function openPembayaran(){
+    if(!cart.length)return alert("Keranjang kosong!");
+    const total=cart.reduce((a,b)=>a+b.harga*b.qty,0);
+    document.getElementById("summaryBayar").innerHTML=`<b>Total:</b> Rp ${total.toLocaleString("id-ID")}`;
+    document.getElementById("inputUang").value=total;
+    document.getElementById("modalBayar").style.display="flex";
+  }
+  document.getElementById("inputUang").addEventListener("input",()=>{
+    const uang=parseInt(document.getElementById("inputUang").value)||0;
+    const total=cart.reduce((a,b)=>a+b.harga*b.qty,0);
+    document.getElementById("infoKembalian").textContent=`Kembalian: Rp ${(uang-total<0?0:uang-total).toLocaleString("id-ID")}`;
+  });
+  function prosesBayar(){
+    const total=cart.reduce((a,b)=>a+b.harga*b.qty,0);
+    const uang=parseInt(document.getElementById("inputUang").value);
+    if(isNaN(uang)||uang<total)return alert("Uang tidak cukup!");
+    const metode=document.getElementById("metodeBayar").value;
+    const kembalian=uang-total;
+    const now=new Date();
+    const id=`TRX-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}-${(penjualan.length+1).toString().padStart(3,"0")}`;
+    const trx={id,tanggal:now.toLocaleString("id-ID"),kasir:namaKasir,items:cart,total,metode,bayar:uang,kembalian};
+    penjualan.push(trx);
+    localStorage.setItem("penjualan",JSON.stringify(penjualan));
+    alert(`Transaksi sukses!\nTotal Rp ${total.toLocaleString("id-ID")}`);
+    cetakStrukPDF(trx);
+    cart=[];localStorage.setItem("cart","[]");tampilkanKeranjang();tutupModal("modalBayar");
+  }
+  function cetakStrukPDF(trx){
+    const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:"pt",format:"a6"});
+    let y=30;doc.setFontSize(12);doc.text("EPOS PISCOK LUMER",20,y);
+    y+=14;doc.setFontSize(9);doc.text(`ID: ${trx.id}`,20,y);y+=12;
+    doc.text(`Kasir: ${trx.kasir}`,20,y);y+=12;
+    doc.text(`Tanggal: ${trx.tanggal}`,20,y);y+=12;doc.line(20,y,280,y);y+=12;
+    trx.items.forEach(it=>{doc.text(`${it.nama} x${it.qty}`,20,y);doc.text(`Rp ${(it.harga*it.qty).toLocaleString("id-ID")}`,250,y,{align:"right"});y+=12;});
+    y+=6;doc.line(20,y,280,y);y+=12;
+    doc.text(`Total: Rp ${trx.total.toLocaleString("id-ID")}`,20,y);y+=12;
+    doc.text(`Bayar: Rp ${trx.bayar.toLocaleString("id-ID")}`,20,y);y+=12;
+    doc.text(`Kembali: Rp ${trx.kembalian.toLocaleString("id-ID")}`,20,y);y+=12;
+    doc.text(`Metode: ${trx.metode}`,20,y);y+=20;
+    doc.text("Terima kasih telah berbelanja!",70,y);doc.save(`${trx.id}.pdf`);
+  }
+
+  // ====== LAPORAN ======
+  function openLaporan(){
+    const lap=penjualan.map(p=>
+      `<div style='margin-bottom:10px; border-bottom:1px solid #ccc;'>
+        <b>${p.id}</b> (${p.tanggal}) - Kasir: ${p.kasir}<br>
+        Metode: ${p.metode} | Total: Rp ${p.total.toLocaleString("id-ID")}
+      </div>`).join("");
+    document.getElementById("isiLaporan").innerHTML=lap||"Belum ada penjualan";
+    document.getElementById("modalLaporan").style.display="flex";
+  }
+
+  // ====== CSV & RESET ======
+  function triggerImportCSV(){document.getElementById("csvFile").click();}
+  document.getElementById("csvFile").addEventListener("change",importCSV);
+  function importCSV(e){
+    const file=e.target.files[0];if(!file)return;
+    const r=new FileReader();r.onload=function(){
+      const rows=r.result.split("\n").map(x=>x.split(","));
+      produk=rows.slice(1).filter(r=>r[0]).map((r,i)=>({id:i+1,nama:r[0],harga:parseInt(r[1])}));
+      localStorage.setItem("produk",JSON.stringify(produk));tampilkanProduk();
+    };r.readAsText(file);
+  }
+  function exportCSVProduk(){
+    const csv="Nama,Harga\n"+produk.map(p=>`${p.nama},${p.harga}`).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="produk.csv";a.click();
+  }
+  function exportCSVPenjualan(){
+    const csv="ID,Tanggal,Kasir,Total,Metode\n"+penjualan.map(p=>`${p.id},${p.tanggal},${p.kasir},${p.total},${p.metode}`).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="penjualan.csv";a.click();
+  }
+  function resetSemua(){
+    if(confirm("Yakin reset semua data?")){
+      localStorage.clear();produk=[];cart=[];penjualan=[];
+      alert("Data dihapus! Silakan refresh halaman.");
+    }
+  }
+</script>
+</body>
+</html>
